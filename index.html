@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nothing from my end</title>
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<!-- Cloudflare Web Analytics -->
+<script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "7edd51c50a704a87b6c046eba308cf7e"}'></script>
+<!-- End Cloudflare Web Analytics -->
+<style>
+  :root {
+    --paper: #f4ead0;
+    --paper-dark: #e6dab8;
+    --ink: #1a1a1a;
+    --red: #d64545;
+    --blue: #4a7bb8;
+    --yellow: #f5c518;
+    --green: #6aa84f;
+    --purple: #9b6dd6;
+    --orange: #e8a855;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font-family: inherit; cursor: pointer; }
+
+  /* paper-grain background overlay */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(0,0,0,0.025) 0%, transparent 40%),
+      radial-gradient(circle at 70% 60%, rgba(0,0,0,0.02) 0%, transparent 40%),
+      radial-gradient(circle at 50% 80%, rgba(0,0,0,0.02) 0%, transparent 40%);
+    z-index: 1000;
+  }
+
+  .screen {
+    position: fixed;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    text-align: center;
+  }
+  .screen.active { display: flex; }
+
+  /* ============ TITLE SCREEN ============ */
+  #title h1 {
+    font-family: 'Kalam', cursive;
+    font-weight: 700;
+    font-size: clamp(44px, 9vw, 96px);
+    line-height: 0.9;
+    margin-bottom: 16px;
+    transform: rotate(-1.5deg);
+    text-shadow: 4px 4px 0 rgba(0,0,0,0.08);
+  }
+  #title .sub {
+    font-size: clamp(18px, 2.2vw, 24px);
+    max-width: 600px;
+    line-height: 1.4;
+    margin-bottom: 28px;
+    color: #555;
+  }
+  .title-scene {
+    margin-bottom: 28px;
+  }
+  .btn {
+    background: var(--ink);
+    color: var(--paper);
+    border: 3px solid var(--ink);
+    padding: 14px 36px;
+    font-size: 22px;
+    font-family: 'Kalam', cursive;
+    font-weight: 700;
+    border-radius: 50px;
+    box-shadow: 5px 5px 0 rgba(0,0,0,0.2);
+    transition: all 0.15s ease;
+  }
+  .btn:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+  }
+  .rules {
+    background: white;
+    border: 2.5px solid var(--ink);
+    border-radius: 8px;
+    padding: 16px 22px;
+    max-width: 480px;
+    margin-bottom: 22px;
+    font-size: 17px;
+    line-height: 1.5;
+    text-align: left;
+    box-shadow: 5px 5px 0 rgba(0,0,0,0.1);
+    transform: rotate(0.4deg);
+  }
+  .rules b { color: var(--red); }
+
+  /* ============ GAME SCREEN ============ */
+  #game { padding: 0; }
+  #game.active { display: flex; flex-direction: column; }
+
+  .topbar {
+    height: 54px;
+    background: white;
+    border-bottom: 3px solid var(--ink);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 18px;
+    font-size: 20px;
+    font-family: 'Kalam', cursive;
+    font-weight: 700;
+  }
+  .topbar .meeting-title { flex: 1; }
+  .topbar .meeting-title::before {
+    content: "●";
+    color: var(--red);
+    margin-right: 6px;
+  }
+  .topbar .timer, .topbar .score {
+    background: var(--paper);
+    padding: 4px 14px;
+    border: 2px solid var(--ink);
+    border-radius: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+  .topbar .score { color: var(--green); }
+
+  .stage {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 310px;
+    gap: 14px;
+    padding: 14px;
+    min-height: 0;
+  }
+
+  /* video grid */
+  .video-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 12px;
+    min-height: 0;
+  }
+  .tile {
+    background: white;
+    border: 3px solid var(--ink);
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.1);
+  }
+  .tile.speaking {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 4px var(--yellow), 4px 4px 0 rgba(0,0,0,0.1);
+  }
+  .tile svg { width: 70%; height: 85%; }
+  .tile .name {
+    position: absolute;
+    bottom: 6px;
+    left: 8px;
+    font-size: 15px;
+    background: var(--ink);
+    color: white;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-family: 'Kalam', cursive;
+    font-weight: 700;
+  }
+  .tile.you { background: #fff8e0; }
+  .tile.you.camera-off { background: #1a1a1a; }
+  .tile.you.camera-off svg { display: none; }
+  .tile .cam-off-msg {
+    display: none;
+    color: var(--paper);
+    font-family: 'Kalam', cursive;
+    font-size: 22px;
+    text-align: center;
+  }
+  .tile.you.camera-off .cam-off-msg { display: block; }
+
+  /* side panel */
+  .side {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+  .panel {
+    background: white;
+    border: 3px solid var(--ink);
+    border-radius: 12px;
+    padding: 12px 14px;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.1);
+  }
+  .meter-label {
+    font-size: 16px;
+    font-family: 'Kalam', cursive;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .bar {
+    height: 14px;
+    background: var(--paper-dark);
+    border: 2px solid var(--ink);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .bar .fill {
+    height: 100%;
+    background: var(--green);
+    transition: width 0.3s ease, background 0.3s ease;
+  }
+  .bar .fill.mid { background: var(--yellow); }
+  .bar .fill.low { background: var(--red); }
+
+  .cam-btn {
+    width: 100%;
+    background: white;
+    border: 3px solid var(--ink);
+    color: var(--ink);
+    padding: 10px;
+    border-radius: 50px;
+    font-family: 'Kalam', cursive;
+    font-weight: 700;
+    font-size: 18px;
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.15);
+    transition: all 0.1s ease;
+  }
+  .cam-btn:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 rgba(0,0,0,0.15); }
+  .cam-btn.off { background: var(--red); color: white; }
+
+  .tasks {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+  }
+  .tasks h3 {
+    font-size: 16px;
+    font-family: 'Kalam', cursive;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #555;
+  }
+  .task {
+    background: var(--paper);
+    border: 2.5px solid var(--ink);
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.1s ease;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.1);
+    position: relative;
+  }
+  .task:hover { transform: translate(1px, 1px); box-shadow: 1px 1px 0 rgba(0,0,0,0.1); }
+  .task.doing {
+    background: #fff2b0;
+    border-color: var(--red);
+    animation: wiggle 0.5s ease infinite alternate;
+  }
+  @keyframes wiggle {
+    from { transform: rotate(-0.5deg); }
+    to { transform: rotate(0.5deg); }
+  }
+  .task-icon {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+  }
+  .task-body { flex: 1; min-width: 0; }
+  .task-name {
+    font-size: 16px;
+    line-height: 1.2;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .task-reward {
+    color: var(--green);
+    font-weight: 700;
+    font-family: 'Kalam', cursive;
+    flex-shrink: 0;
+  }
+  .task-meta {
+    font-size: 13px;
+    color: #888;
+    display: flex;
+    justify-content: space-between;
+  }
+  .task.needs-off .task-meta { color: var(--red); font-weight: 600; }
+  .task-progress {
+    height: 4px;
+    background: var(--paper-dark);
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+  }
+  .task-progress .fill {
+    height: 100%;
+    background: var(--red);
+    width: 0%;
+    transition: width 0.1s linear;
+  }
+
+  /* ============ ALERT ============ */
+  .alert {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-1.5deg);
+    background: var(--yellow);
+    color: var(--ink);
+    padding: 24px 44px;
+    border-radius: 12px;
+    border: 4px solid var(--ink);
+    font-size: 24px;
+    font-family: 'Kalam', cursive;
+    font-weight: 700;
+    text-align: center;
+    box-shadow: 8px 8px 0 rgba(0,0,0,0.3);
+    z-index: 100;
+    display: none;
+    max-width: 520px;
+  }
+  .alert.active { display: block; animation: shake 0.4s ease infinite alternate; }
+  .alert .small {
+    font-size: 17px;
+    font-weight: 400;
+    margin-top: 6px;
+  }
+  .alert .respond-btn {
+    display: block;
+    margin: 16px auto 0;
+    background: var(--red);
+    color: white;
+    border: 3px solid var(--ink);
+    padding: 12px 28px;
+    font-size: 20px;
+    font-family: 'Kalam', cursive;
+    font-weight: 700;
+    border-radius: 50px;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.3);
+  }
+  .alert .respond-btn:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 rgba(0,0,0,0.3); }
+  @keyframes shake {
+    from { transform: translate(-50%, -50%) rotate(-2deg); }
+    to { transform: translate(-50%, -50%) rotate(2deg); }
+  }
+
+  .toast {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%) rotate(-2deg);
+    background: var(--green);
+    color: white;
+    padding: 10px 22px;
+    border: 3px solid var(--ink);
+    border-radius: 10px;
+    font-size: 18px;
+    font-family: 'Kalam', cursive;
+    font-weight: 700;
+    z-index: 50;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.2);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(8px) rotate(-2deg); }
+  .toast.bad { background: var(--red); }
+
+  /* ============ END SCREEN ============ */
+  #end h2 {
+    font-family: 'Kalam', cursive;
+    font-weight: 700;
+    font-size: clamp(36px, 6vw, 68px);
+    margin-bottom: 10px;
+    transform: rotate(-1deg);
+  }
+  #end .result {
+    font-size: 20px;
+    color: #555;
+    margin-bottom: 20px;
+    max-width: 500px;
+  }
+  #end .stats {
+    background: white;
+    border: 3px solid var(--ink);
+    padding: 18px 28px;
+    border-radius: 10px;
+    margin-bottom: 22px;
+    min-width: 280px;
+    box-shadow: 5px 5px 0 rgba(0,0,0,0.15);
+    transform: rotate(0.5deg);
+  }
+  #end .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 20px;
+  }
+  #end .stat-row b { color: var(--red); }
+</style>
+</head>
+<body>
+
+  <!-- ============ TITLE SCREEN ============ -->
+  <section id="title" class="screen active">
+    <div class="title-scene">
+      <!-- Cartoon of a stressed office worker on a laptop -->
+      <svg width="240" height="180" viewBox="0 0 240 180" xmlns="http://www.w3.org/2000/svg">
+        <!-- desk -->
+        <rect x="20" y="130" width="200" height="8" fill="#1a1a1a"/>
+        <!-- laptop base -->
+        <rect x="70" y="115" width="100" height="18" rx="2" fill="white" stroke="#1a1a1a" stroke-width="3"/>
+        <!-- laptop screen -->
+        <rect x="75" y="70" width="90" height="50" rx="3" fill="#4a7bb8" stroke="#1a1a1a" stroke-width="3"/>
+        <!-- tiny faces on the screen -->
+        <circle cx="90" cy="85" r="4" fill="#f5c518"/>
+        <circle cx="105" cy="85" r="4" fill="#d64545"/>
+        <circle cx="120" cy="85" r="4" fill="#6aa84f"/>
+        <circle cx="135" cy="85" r="4" fill="#9b6dd6"/>
+        <circle cx="150" cy="85" r="4" fill="#e8a855"/>
+        <rect x="85" y="100" width="70" height="4" rx="2" fill="white" opacity="0.6"/>
+        <rect x="95" y="108" width="50" height="4" rx="2" fill="white" opacity="0.4"/>
+
+        <!-- person head popping up behind laptop -->
+        <circle cx="120" cy="52" r="22" fill="#fce0a8" stroke="#1a1a1a" stroke-width="3"/>
+        <!-- hair tuft -->
+        <path d="M102 38 Q110 25 120 30 Q130 25 138 38" stroke="#1a1a1a" stroke-width="3" fill="#6b4226" stroke-linecap="round"/>
+        <!-- stressed eyes (x marks) -->
+        <g stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round">
+          <line x1="108" y1="48" x2="114" y2="54"/>
+          <line x1="114" y1="48" x2="108" y2="54"/>
+          <line x1="126" y1="48" x2="132" y2="54"/>
+          <line x1="132" y1="48" x2="126" y2="54"/>
+        </g>
+        <!-- worried mouth -->
+        <path d="M112 62 Q120 58 128 62" stroke="#1a1a1a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <!-- sweat drop -->
+        <path d="M142 42 Q145 48 142 50 Q139 48 142 42 Z" fill="#4a7bb8" stroke="#1a1a1a" stroke-width="2"/>
+
+        <!-- thought bubble with laundry basket -->
+        <circle cx="190" cy="40" r="4" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+        <circle cx="196" cy="32" r="6" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+        <ellipse cx="205" cy="22" rx="18" ry="14" fill="white" stroke="#1a1a1a" stroke-width="2.5"/>
+        <text x="205" y="28" text-anchor="middle" font-size="18">🧺</text>
+      </svg>
+    </div>
+    <h1>Nothing from my end</h1>
+    <p class="sub">You're trapped in a one hour Teams call. There's so much to do in real life. Can you get it all done without getting caught?</p>
+    <div class="rules">
+      <b>Click a task</b> to start it.<br>
+      <b>Turn your camera off</b> to work 60% faster — but your engagement drains fast.<br>
+      <b>When called on</b>, smash the button. Caught with camera off = game over.<br>
+      <b>Survive 60 seconds.</b> It gets harder.
+    </div>
+    <button class="btn" onclick="startGame()">Join the meeting</button>
+  </section>
+
+  <!-- ============ GAME SCREEN ============ -->
+  <section id="game" class="screen">
+    <div class="topbar">
+      <div class="meeting-title">Q4 Strategy Sync</div>
+      <div class="timer" id="timer">60</div>
+      <div class="score">Score: <span id="score">0</span></div>
+    </div>
+    <div class="stage">
+      <div class="video-grid" id="grid"></div>
+      <div class="side">
+        <div class="panel">
+          <div class="meter-label"><span>Engagement</span><span id="engagementVal">100%</span></div>
+          <div class="bar"><div class="fill" id="engagementBar" style="width:100%"></div></div>
+        </div>
+        <button class="cam-btn" id="camBtn" onclick="toggleCamera()">📷 Camera: On</button>
+        <div class="panel tasks">
+          <h3>Your actual life</h3>
+          <div id="taskList"></div>
+        </div>
+      </div>
+    </div>
+    <div class="alert" id="alert">
+      <div>"Paddy — anything from your end?"</div>
+      <div class="small" id="alertSmall">Respond in 5…</div>
+      <button class="respond-btn" onclick="respondToPrompt()">Nothing from my end, thanks!</button>
+    </div>
+    <div class="toast" id="toast"></div>
+  </section>
+
+  <!-- ============ END SCREEN ============ -->
+  <section id="end" class="screen">
+    <h2 id="endTitle">Meeting adjourned</h2>
+    <p class="result" id="endResult">You made it through.</p>
+    <div class="stats">
+      <div class="stat-row"><span>Final score</span><b id="finalScore">0</b></div>
+      <div class="stat-row"><span>Tasks completed</span><b id="finalTasks">0</b></div>
+      <div class="stat-row"><span>Times caught</span><b id="finalCaught">0</b></div>
+    </div>
+    <button class="btn" onclick="resetGame()">Another meeting?</button>
+  </section>
+
+<script>
+// ============ CHARACTER SVGs ============
+// Each character is a flat cartoon head + shoulders, Dilbert-ish
+function characterSVG(c) {
+  return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <!-- background wall -->
+    <rect width="100" height="100" fill="${c.wall}"/>
+    <!-- shoulders / shirt -->
+    <path d="M15 100 Q15 75 50 75 Q85 75 85 100 Z" fill="${c.shirt}" stroke="#1a1a1a" stroke-width="2.5"/>
+    <!-- neck -->
+    <rect x="44" y="65" width="12" height="12" fill="${c.skin}" stroke="#1a1a1a" stroke-width="2"/>
+    <!-- head -->
+    <ellipse cx="50" cy="45" rx="22" ry="24" fill="${c.skin}" stroke="#1a1a1a" stroke-width="2.5"/>
+    ${c.hair}
+    ${c.eyes}
+    ${c.mouth}
+    ${c.extra || ''}
+  </svg>`;
+}
+
+const CHARACTERS = [
+  { // Karen - blonde, glasses, smug
+    name: "Karen",
+    wall: "#d8e8d0",
+    shirt: "#c84a8a",
+    skin: "#fce0a8",
+    hair: `<path d="M28 40 Q30 20 50 18 Q70 20 72 40 Q72 28 62 24 Q50 22 38 26 Q30 30 28 40 Z" fill="#f5c518" stroke="#1a1a1a" stroke-width="2.5"/>`,
+    eyes: `<circle cx="42" cy="45" r="5" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+           <circle cx="58" cy="45" r="5" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+           <circle cx="42" cy="45" r="2" fill="#1a1a1a"/>
+           <circle cx="58" cy="45" r="2" fill="#1a1a1a"/>`,
+    mouth: `<path d="M42 58 Q50 55 58 58" stroke="#1a1a1a" stroke-width="2" fill="none" stroke-linecap="round"/>`,
+  },
+  { // Dave - bald, thick moustache
+    name: "Dave",
+    wall: "#e8dcc0",
+    shirt: "#4a7bb8",
+    skin: "#f0c896",
+    hair: `<path d="M32 38 Q32 28 42 26" stroke="#1a1a1a" stroke-width="2.5" fill="none"/>
+           <path d="M68 38 Q68 28 58 26" stroke="#1a1a1a" stroke-width="2.5" fill="none"/>`,
+    eyes: `<circle cx="42" cy="44" r="2.5" fill="#1a1a1a"/>
+           <circle cx="58" cy="44" r="2.5" fill="#1a1a1a"/>`,
+    mouth: `<path d="M38 55 Q42 57 50 56 Q58 57 62 55" stroke="#1a1a1a" stroke-width="3" fill="#6b4226" stroke-linecap="round"/>
+            <line x1="44" y1="62" x2="56" y2="62" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round"/>`,
+  },
+  { // Priya - dark hair, bright earrings, smile
+    name: "Priya",
+    wall: "#f0d8e8",
+    shirt: "#6aa84f",
+    skin: "#d4a574",
+    hair: `<path d="M26 42 Q26 20 50 18 Q74 20 74 42 Q74 35 74 55 Q70 50 68 40 Q68 28 50 26 Q32 28 32 40 Q30 50 26 55 Q26 48 26 42 Z" fill="#2a1810" stroke="#1a1a1a" stroke-width="2"/>
+           <circle cx="28" cy="52" r="3" fill="#f5c518" stroke="#1a1a1a" stroke-width="1.5"/>
+           <circle cx="72" cy="52" r="3" fill="#f5c518" stroke="#1a1a1a" stroke-width="1.5"/>`,
+    eyes: `<circle cx="42" cy="45" r="2.5" fill="#1a1a1a"/>
+           <circle cx="58" cy="45" r="2.5" fill="#1a1a1a"/>`,
+    mouth: `<path d="M40 55 Q50 64 60 55" stroke="#1a1a1a" stroke-width="2.5" fill="white" stroke-linecap="round"/>`,
+  },
+  { // Marcus - beard, beanie, creative director energy
+    name: "Marcus",
+    wall: "#c0d8e8",
+    shirt: "#1a1a1a",
+    skin: "#e6b88c",
+    hair: `<path d="M28 32 Q30 18 50 18 Q70 18 72 32 L72 40 L28 40 Z" fill="#d64545" stroke="#1a1a1a" stroke-width="2.5"/>
+           <line x1="28" y1="35" x2="72" y2="35" stroke="#1a1a1a" stroke-width="2" stroke-dasharray="2,2"/>`,
+    eyes: `<circle cx="42" cy="46" r="2.5" fill="#1a1a1a"/>
+           <circle cx="58" cy="46" r="2.5" fill="#1a1a1a"/>`,
+    mouth: `<path d="M38 58 Q40 60 50 60 Q60 60 62 58 L62 66 Q50 72 38 66 Z" fill="#6b4226" stroke="#1a1a1a" stroke-width="2"/>`,
+  },
+  { // Sophie - red hair, freckles, looks tired
+    name: "Sophie",
+    wall: "#e8c8c0",
+    shirt: "#9b6dd6",
+    skin: "#fce0d0",
+    hair: `<path d="M26 40 Q28 18 50 16 Q72 18 74 40 Q74 30 68 24 Q58 20 50 22 Q38 20 32 24 Q26 30 26 40 Z" fill="#e8a855" stroke="#1a1a1a" stroke-width="2.5"/>
+           <path d="M26 40 L26 60 Q30 55 32 48" fill="#e8a855" stroke="#1a1a1a" stroke-width="2.5"/>
+           <path d="M74 40 L74 60 Q70 55 68 48" fill="#e8a855" stroke="#1a1a1a" stroke-width="2.5"/>`,
+    eyes: `<path d="M38 46 L46 46" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+           <path d="M54 46 L62 46" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>`,
+    mouth: `<circle cx="50" cy="58" r="3" fill="#1a1a1a"/>`,
+    extra: `<circle cx="40" cy="52" r="0.8" fill="#8b4513"/>
+            <circle cx="44" cy="54" r="0.8" fill="#8b4513"/>
+            <circle cx="56" cy="54" r="0.8" fill="#8b4513"/>
+            <circle cx="60" cy="52" r="0.8" fill="#8b4513"/>`,
+  },
+];
+
+// ============ YOU SVG ============
+function youSVG() {
+  return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" fill="#fff2c0"/>
+    <path d="M15 100 Q15 75 50 75 Q85 75 85 100 Z" fill="#4a7bb8" stroke="#1a1a1a" stroke-width="2.5"/>
+    <rect x="44" y="65" width="12" height="12" fill="#fce0a8" stroke="#1a1a1a" stroke-width="2"/>
+    <ellipse cx="50" cy="45" rx="22" ry="24" fill="#fce0a8" stroke="#1a1a1a" stroke-width="2.5"/>
+    <!-- messy hair -->
+    <path d="M28 36 Q32 20 48 22 Q52 18 60 22 Q70 18 72 34 Q68 28 58 28 Q52 32 46 28 Q36 28 28 36 Z" fill="#6b4226" stroke="#1a1a1a" stroke-width="2.5"/>
+    <!-- shifty eyes -->
+    <circle cx="42" cy="45" r="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+    <circle cx="58" cy="45" r="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+    <circle cx="44" cy="46" r="1.8" fill="#1a1a1a"/>
+    <circle cx="60" cy="46" r="1.8" fill="#1a1a1a"/>
+    <!-- nervous smile -->
+    <path d="M42 58 Q50 56 58 58" stroke="#1a1a1a" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <!-- sweat -->
+    <path d="M70 35 Q72 42 70 44 Q68 42 70 35 Z" fill="#4a7bb8" stroke="#1a1a1a" stroke-width="1.5"/>
+  </svg>`;
+}
+
+// ============ TASK ICONS ============
+const ICONS = {
+  laundry: `<svg viewBox="0 0 40 40"><rect x="8" y="12" width="24" height="22" rx="2" fill="#e8dcc0" stroke="#1a1a1a" stroke-width="2.5"/><path d="M8 16 L32 16" stroke="#1a1a1a" stroke-width="2"/><circle cx="14" cy="24" r="2" fill="#d64545"/><circle cx="20" cy="22" r="2" fill="#4a7bb8"/><circle cx="26" cy="25" r="2" fill="#f5c518"/><circle cx="17" cy="28" r="2" fill="#6aa84f"/><circle cx="24" cy="29" r="2" fill="#9b6dd6"/></svg>`,
+  lunch: `<svg viewBox="0 0 40 40"><path d="M8 22 Q8 14 20 14 Q32 14 32 22" fill="#f5c518" stroke="#1a1a1a" stroke-width="2.5"/><rect x="8" y="22" width="24" height="3" fill="#6aa84f" stroke="#1a1a1a" stroke-width="2"/><rect x="8" y="25" width="24" height="6" fill="#d64545" stroke="#1a1a1a" stroke-width="2"/><path d="M6 31 Q6 34 20 34 Q34 34 34 31" fill="#e8a855" stroke="#1a1a1a" stroke-width="2.5"/></svg>`,
+  eat: `<svg viewBox="0 0 40 40"><circle cx="20" cy="22" r="13" fill="white" stroke="#1a1a1a" stroke-width="2.5"/><circle cx="20" cy="22" r="8" fill="#f5c518" stroke="#1a1a1a" stroke-width="2"/><line x1="8" y1="8" x2="10" y2="20" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/><line x1="32" y1="8" x2="30" y2="20" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/></svg>`,
+  flights: `<svg viewBox="0 0 40 40"><path d="M6 22 L18 16 L34 6 L32 14 L20 20 L14 28 L10 26 L14 22 Z" fill="#4a7bb8" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round"/></svg>`,
+  email: `<svg viewBox="0 0 40 40"><rect x="6" y="12" width="28" height="20" rx="2" fill="white" stroke="#1a1a1a" stroke-width="2.5"/><path d="M6 14 L20 24 L34 14" stroke="#1a1a1a" stroke-width="2.5" fill="none"/><circle cx="30" cy="12" r="5" fill="#d64545" stroke="#1a1a1a" stroke-width="2"/></svg>`,
+  groceries: `<svg viewBox="0 0 40 40"><path d="M6 12 L10 12 L14 28 L32 28 L34 16 L12 16" fill="#e8dcc0" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round"/><circle cx="16" cy="32" r="2" fill="#1a1a1a"/><circle cx="28" cy="32" r="2" fill="#1a1a1a"/><circle cx="20" cy="20" r="2" fill="#d64545"/><circle cx="26" cy="20" r="2" fill="#6aa84f"/></svg>`,
+  bins: `<svg viewBox="0 0 40 40"><rect x="10" y="14" width="20" height="22" rx="1" fill="#888" stroke="#1a1a1a" stroke-width="2.5"/><rect x="7" y="10" width="26" height="4" rx="1" fill="#555" stroke="#1a1a1a" stroke-width="2.5"/><line x1="16" y1="18" x2="16" y2="32" stroke="#1a1a1a" stroke-width="2"/><line x1="20" y1="18" x2="20" y2="32" stroke="#1a1a1a" stroke-width="2"/><line x1="24" y1="18" x2="24" y2="32" stroke="#1a1a1a" stroke-width="2"/></svg>`,
+  hang: `<svg viewBox="0 0 40 40"><line x1="4" y1="12" x2="36" y2="12" stroke="#1a1a1a" stroke-width="2"/><path d="M10 12 L8 24 L14 24 L12 12" fill="#4a7bb8" stroke="#1a1a1a" stroke-width="2"/><path d="M20 12 L18 26 L26 26 L24 12" fill="#d64545" stroke="#1a1a1a" stroke-width="2"/><path d="M30 12 L28 22 L34 22 L32 12" fill="#f5c518" stroke="#1a1a1a" stroke-width="2"/></svg>`,
+  bill: `<svg viewBox="0 0 40 40"><rect x="8" y="8" width="24" height="26" rx="1" fill="white" stroke="#1a1a1a" stroke-width="2.5"/><line x1="12" y1="14" x2="28" y2="14" stroke="#1a1a1a" stroke-width="2"/><line x1="12" y1="18" x2="28" y2="18" stroke="#888" stroke-width="1.5"/><line x1="12" y1="22" x2="28" y2="22" stroke="#888" stroke-width="1.5"/><text x="20" y="31" text-anchor="middle" font-size="10" font-weight="bold" fill="#d64545">£</text></svg>`,
+  coffee: `<svg viewBox="0 0 40 40"><path d="M10 14 L10 30 Q10 34 14 34 L26 34 Q30 34 30 30 L30 14 Z" fill="white" stroke="#1a1a1a" stroke-width="2.5"/><path d="M30 18 Q36 18 36 24 Q36 30 30 30" fill="none" stroke="#1a1a1a" stroke-width="2.5"/><path d="M14 8 Q16 6 14 4" stroke="#888" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M20 8 Q22 6 20 4" stroke="#888" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`,
+  news: `<svg viewBox="0 0 40 40"><rect x="6" y="10" width="28" height="22" rx="1" fill="white" stroke="#1a1a1a" stroke-width="2.5"/><rect x="9" y="13" width="22" height="4" fill="#1a1a1a"/><line x1="9" y1="20" x2="31" y2="20" stroke="#1a1a1a" stroke-width="1.5"/><line x1="9" y1="23" x2="31" y2="23" stroke="#888" stroke-width="1"/><line x1="9" y1="26" x2="31" y2="26" stroke="#888" stroke-width="1"/><line x1="9" y1="29" x2="25" y2="29" stroke="#888" stroke-width="1"/></svg>`,
+  message: `<svg viewBox="0 0 40 40"><path d="M6 10 L34 10 L34 26 L22 26 L14 32 L14 26 L6 26 Z" fill="#6aa84f" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round"/><circle cx="14" cy="18" r="1.5" fill="white"/><circle cx="20" cy="18" r="1.5" fill="white"/><circle cx="26" cy="18" r="1.5" fill="white"/></svg>`,
+  cat: `<svg viewBox="0 0 40 40"><path d="M10 20 L8 10 L14 16 L26 16 L32 10 L30 20 Q30 32 20 32 Q10 32 10 20 Z" fill="#e8a855" stroke="#1a1a1a" stroke-width="2.5"/><circle cx="16" cy="22" r="1.5" fill="#1a1a1a"/><circle cx="24" cy="22" r="1.5" fill="#1a1a1a"/><path d="M18 26 L20 28 L22 26" stroke="#1a1a1a" stroke-width="1.5" fill="none" stroke-linecap="round"/><line x1="10" y1="24" x2="6" y2="23" stroke="#1a1a1a" stroke-width="1.5"/><line x1="10" y1="26" x2="6" y2="27" stroke="#1a1a1a" stroke-width="1.5"/><line x1="30" y1="24" x2="34" y2="23" stroke="#1a1a1a" stroke-width="1.5"/><line x1="30" y1="26" x2="34" y2="27" stroke="#1a1a1a" stroke-width="1.5"/></svg>`,
+  dentist: `<svg viewBox="0 0 40 40"><path d="M12 14 Q12 8 20 8 Q28 8 28 14 L28 24 Q28 32 24 32 Q22 32 22 28 L22 22 Q22 20 20 20 Q18 20 18 22 L18 28 Q18 32 16 32 Q12 32 12 24 Z" fill="white" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round"/></svg>`,
+  tidy: `<svg viewBox="0 0 40 40"><rect x="6" y="22" width="28" height="10" fill="#e8dcc0" stroke="#1a1a1a" stroke-width="2.5"/><rect x="10" y="12" width="6" height="10" fill="#d64545" stroke="#1a1a1a" stroke-width="2"/><rect x="18" y="8" width="6" height="14" fill="#4a7bb8" stroke="#1a1a1a" stroke-width="2"/><rect x="26" y="14" width="6" height="8" fill="#f5c518" stroke="#1a1a1a" stroke-width="2"/></svg>`,
+};
+
+// ============ TASK POOL ============
+const TASK_POOL = [
+  { name: "Put on a laundry load", time: 4, reward: 10, needsOff: true, icon: 'laundry' },
+  { name: "Make lunch", time: 6, reward: 15, needsOff: true, icon: 'lunch' },
+  { name: "Eat lunch", time: 5, reward: 10, needsOff: false, icon: 'eat' },
+  { name: "Book flights to Lisbon", time: 5, reward: 15, needsOff: false, icon: 'flights' },
+  { name: "Reply to urgent email", time: 3, reward: 8, needsOff: false, icon: 'email' },
+  { name: "Order groceries", time: 4, reward: 10, needsOff: false, icon: 'groceries' },
+  { name: "Take out the bins", time: 3, reward: 8, needsOff: true, icon: 'bins' },
+  { name: "Hang up the washing", time: 5, reward: 12, needsOff: true, icon: 'hang' },
+  { name: "Pay the gas bill", time: 3, reward: 8, needsOff: false, icon: 'bill' },
+  { name: "Make a coffee", time: 3, reward: 6, needsOff: true, icon: 'coffee' },
+  { name: "Read today's news", time: 4, reward: 8, needsOff: false, icon: 'news' },
+  { name: "Message a friend", time: 2, reward: 5, needsOff: false, icon: 'message' },
+  { name: "Feed the cat", time: 2, reward: 6, needsOff: true, icon: 'cat' },
+  { name: "Book a dentist appt", time: 3, reward: 8, needsOff: false, icon: 'dentist' },
+  { name: "Tidy the kitchen", time: 6, reward: 14, needsOff: true, icon: 'tidy' },
+];
+
+// ============ STATE ============
+const MEETING_LENGTH = 60;
+let state = {};
+
+function newState() {
+  return {
+    timeLeft: MEETING_LENGTH,
+    engagement: 100,
+    score: 0,
+    tasksCompleted: 0,
+    caughtCount: 0,
+    cameraOn: true,
+    currentTask: null,
+    taskProgress: 0,
+    availableTasks: shuffleTasks(),
+    tickInterval: null,
+    promptTimeout: null,
+    promptActive: false,
+    _promptCountdown: null,
+    speakingInterval: null,
+    gameOver: false,
+  };
+}
+
+function shuffleTasks() {
+  const pool = [...TASK_POOL];
+  const picked = [];
+  for (let i = 0; i < 6; i++) {
+    const idx = Math.floor(Math.random() * pool.length);
+    picked.push({ ...pool[idx], id: Math.random() });
+    pool.splice(idx, 1);
+  }
+  return picked;
+}
+
+// ============ SCREENS ============
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function startGame() {
+  state = newState();
+  show('game');
+  buildGrid();
+  renderTasks();
+  renderMeters();
+  state.tickInterval = setInterval(tick, 100);
+  schedulePrompt();
+  scheduleSpeakerChange();
+}
+
+function resetGame() {
+  clearAllTimers();
+  show('title');
+}
+
+function clearAllTimers() {
+  if (state.tickInterval) clearInterval(state.tickInterval);
+  if (state.promptTimeout) clearTimeout(state.promptTimeout);
+  if (state.speakingInterval) clearInterval(state.speakingInterval);
+  if (state._promptCountdown) clearInterval(state._promptCountdown);
+}
+
+// ============ GRID ============
+function buildGrid() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+
+  const youTile = document.createElement('div');
+  youTile.className = 'tile you';
+  youTile.id = 'youTile';
+  youTile.innerHTML = youSVG() + '<div class="name">You (Paddy)</div><div class="cam-off-msg">CAMERA OFF</div>';
+  grid.appendChild(youTile);
+
+  CHARACTERS.forEach((c, i) => {
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.dataset.idx = i;
+    tile.innerHTML = characterSVG(c) + `<div class="name">${c.name}</div>`;
+    grid.appendChild(tile);
+  });
+}
+
+function scheduleSpeakerChange() {
+  state.speakingInterval = setInterval(() => {
+    document.querySelectorAll('.tile.speaking').forEach(t => t.classList.remove('speaking'));
+    const tiles = document.querySelectorAll('.tile:not(.you)');
+    const tile = tiles[Math.floor(Math.random() * tiles.length)];
+    if (tile) tile.classList.add('speaking');
+  }, 2200);
+}
+
+// ============ TASKS ============
+function renderTasks() {
+  const list = document.getElementById('taskList');
+  list.innerHTML = '';
+  state.availableTasks.forEach(task => {
+    const el = document.createElement('div');
+    el.className = 'task' + (state.currentTask && state.currentTask.id === task.id ? ' doing' : '') + (task.needsOff ? ' needs-off' : '');
+    el.onclick = () => startTask(task);
+    el.innerHTML = `
+      <div class="task-icon">${ICONS[task.icon] || ''}</div>
+      <div class="task-body">
+        <div class="task-name">${task.name}<span class="task-reward">+${task.reward}</span></div>
+        <div class="task-meta"><span>${task.time}s</span><span>${task.needsOff ? 'camera off' : 'on camera ok'}</span></div>
+        <div class="task-progress"><div class="fill" id="prog-${task.id}"></div></div>
+      </div>
+    `;
+    list.appendChild(el);
+  });
+}
+
+function startTask(task) {
+  if (state.gameOver) return;
+  if (task.needsOff && state.cameraOn) {
+    toast("Turn your camera off first!", true);
+    return;
+  }
+  state.currentTask = { ...task, startedAt: Date.now() };
+  state.taskProgress = 0;
+  renderTasks();
+}
+
+function completeCurrentTask() {
+  if (!state.currentTask) return;
+  state.score += state.currentTask.reward;
+  state.tasksCompleted++;
+  state.availableTasks = state.availableTasks.filter(t => t.id !== state.currentTask.id);
+  const remaining = TASK_POOL.filter(t => !state.availableTasks.some(a => a.name === t.name));
+  if (remaining.length > 0) {
+    const newTask = { ...remaining[Math.floor(Math.random() * remaining.length)], id: Math.random() };
+    state.availableTasks.push(newTask);
+  }
+  toast(`+${state.currentTask.reward}  ${state.currentTask.name}`);
+  state.currentTask = null;
+  renderTasks();
+}
+
+// ============ CAMERA ============
+function toggleCamera() {
+  if (state.gameOver) return;
+  state.cameraOn = !state.cameraOn;
+  const btn = document.getElementById('camBtn');
+  const tile = document.getElementById('youTile');
+  if (state.cameraOn) {
+    btn.textContent = '📷 Camera: On';
+    btn.classList.remove('off');
+    tile.classList.remove('camera-off');
+  } else {
+    btn.textContent = '📷 Camera: Off';
+    btn.classList.add('off');
+    tile.classList.add('camera-off');
+  }
+}
+
+// ============ METERS ============
+function renderMeters() {
+  const eng = Math.max(0, Math.min(100, state.engagement));
+  const bar = document.getElementById('engagementBar');
+  bar.style.width = eng + '%';
+  bar.classList.remove('mid', 'low');
+  if (eng < 30) bar.classList.add('low');
+  else if (eng < 60) bar.classList.add('mid');
+  document.getElementById('engagementVal').textContent = Math.round(eng) + '%';
+  document.getElementById('score').textContent = state.score;
+}
+
+// ============ PROMPT ============
+function schedulePrompt() {
+  // Shorter interval as game progresses (more frequent)
+  const elapsed = MEETING_LENGTH - state.timeLeft;
+  const urgency = Math.min(1, elapsed / MEETING_LENGTH);
+  const minDelay = 6000 - urgency * 2500;  // 6s → 3.5s
+  const maxDelay = 14000 - urgency * 6000; // 14s → 8s
+  const delay = minDelay + Math.random() * (maxDelay - minDelay);
+  state.promptTimeout = setTimeout(triggerPrompt, delay);
+}
+
+function triggerPrompt() {
+  if (state.gameOver) return;
+  state.promptActive = true;
+  const alertEl = document.getElementById('alert');
+  alertEl.classList.add('active');
+
+  // Progressive difficulty: response window shrinks from 5s → 1.5s
+  const elapsed = MEETING_LENGTH - state.timeLeft;
+  const urgency = Math.min(1, elapsed / MEETING_LENGTH);
+  let timeToRespond = Math.max(1.5, 5 - urgency * 3.5);
+  timeToRespond = Math.round(timeToRespond * 10) / 10;
+
+  const smallEl = document.getElementById('alertSmall');
+  smallEl.textContent = `Respond in ${timeToRespond.toFixed(1)}s…`;
+  const start = Date.now();
+  const countdown = setInterval(() => {
+    const remaining = Math.max(0, timeToRespond - (Date.now() - start) / 1000);
+    smallEl.textContent = `Respond in ${remaining.toFixed(1)}s…`;
+    if (remaining <= 0) {
+      clearInterval(countdown);
+      failToRespond();
+    }
+  }, 100);
+  state._promptCountdown = countdown;
+}
+
+function respondToPrompt() {
+  if (!state.promptActive) return;
+  state.promptActive = false;
+  clearInterval(state._promptCountdown);
+  document.getElementById('alert').classList.remove('active');
+
+  if (!state.cameraOn) {
+    // SUDDEN DEATH
+    state.caughtCount++;
+    toast("CAUGHT WITH CAMERA OFF!", true);
+    endGame(false, "caught");
+    return;
+  }
+
+  // Clean save
+  state.engagement = Math.min(100, state.engagement + 10);
+  state.score += 5;
+  toast("Smooth. +5");
+  renderMeters();
+  if (!state.gameOver) schedulePrompt();
+}
+
+function failToRespond() {
+  state.promptActive = false;
+  document.getElementById('alert').classList.remove('active');
+  state.caughtCount++;
+
+  if (!state.cameraOn) {
+    // Double bad: ignored AND camera off = sudden death
+    endGame(false, "caught");
+    return;
+  }
+
+  // On camera but silent: just lose engagement, not sudden death
+  state.engagement -= 35;
+  toast("Awkward silence... -35% engagement", true);
+  if (state.engagement <= 0) {
+    endGame(false, "checkedout");
+    return;
+  }
+  renderMeters();
+  schedulePrompt();
+}
+
+// ============ TICK ============
+function tick() {
+  if (state.gameOver) return;
+  const dt = 0.1;
+  state.timeLeft -= dt;
+  document.getElementById('timer').textContent = Math.ceil(state.timeLeft);
+
+  if (!state.cameraOn) {
+    state.engagement -= 3.5 * dt;
+    if (state.engagement <= 0) {
+      state.engagement = 0;
+      return endGame(false, "checkedout");
+    }
+  } else {
+    state.engagement = Math.min(100, state.engagement + 0.3 * dt);
+  }
+
+  if (state.currentTask) {
+    const speedMultiplier = state.cameraOn ? 1 : 1.6;
+    state.taskProgress += dt * speedMultiplier;
+    const prog = Math.min(100, (state.taskProgress / state.currentTask.time) * 100);
+    const fill = document.getElementById(`prog-${state.currentTask.id}`);
+    if (fill) fill.style.width = prog + '%';
+    if (state.taskProgress >= state.currentTask.time) {
+      completeCurrentTask();
+    }
+  }
+
+  renderMeters();
+
+  if (state.timeLeft <= 0) {
+    endGame(true);
+  }
+}
+
+// ============ TOAST ============
+let toastTimeout;
+function toast(msg, bad = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.toggle('bad', bad);
+  el.classList.add('show');
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => el.classList.remove('show'), 1500);
+}
+
+// ============ END ============
+function endGame(survived, reason) {
+  state.gameOver = true;
+  clearAllTimers();
+  const title = document.getElementById('endTitle');
+  const result = document.getElementById('endResult');
+  const stats = document.querySelector('#end .stats');
+  if (survived) {
+    title.textContent = "Meeting adjourned";
+    if (state.score > 80) result.textContent = "Legendary. The laundry's done, lunch is eaten, you're on a flight to Lisbon next week, and no one suspected a thing.";
+    else if (state.score > 50) result.textContent = "A productive hour. Your real life is in order.";
+    else if (state.score > 25) result.textContent = "You got some bits done. Better than most meetings.";
+    else result.textContent = "You survived. That's something.";
+    stats.style.display = '';
+    document.getElementById('finalScore').textContent = state.score;
+    document.getElementById('finalTasks').textContent = state.tasksCompleted;
+    document.getElementById('finalCaught').textContent = state.caughtCount;
+  } else if (reason === "caught") {
+    title.textContent = "You got caught out!";
+    result.textContent = "Camera off when they called your name. Everyone saw. HR wants a word. No points for you.";
+    stats.style.display = 'none';
+  } else {
+    title.textContent = "You checked out";
+    result.textContent = "Your colleagues noticed the 1000-yard stare. Someone's booked you a one-to-one. No points for you.";
+    stats.style.display = 'none';
+  }
+  show('end');
+}
+</script>
+</body>
+</html>
